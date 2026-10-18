@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#1e293b}
+.wrap{max-width:1000px;margin:0 auto;padding:14px}
+h1{text-align:center;font-size:22px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+input{width:100%;padding:12px;margin:6px 0;border:1px solid #cbd5e1;border-radius:8px;font-size:16px}
+button{padding:12px 16px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:15px;font-weight:bold}
+#login button{width:100%}
+.stats{display:flex;gap:8px;margin-bottom:12px}
+.stat{flex:1;background:#fff;border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.stat b{display:block;font-size:22px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.cols{grid-template-columns:1fr}}
+.col h2{margin:0 0 8px;font-size:18px;text-align:center;color:#fff;padding:8px;border-radius:8px}
+.pass h2{background:#16a34a}.fail h2{background:#dc2626}
+.item{background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);font-size:14px}
+.item .nm{font-weight:bold}
+.item small{color:#64748b;display:block}
+.item summary{cursor:pointer;color:#2563eb;margin-top:4px}
+.item ol{margin:6px 0 0;padding-left:20px;font-size:12px}
+.hide{display:none}
+.top{display:flex;gap:8px;margin-bottom:12px}
+.top button{flex:1}
+.out{background:#64748b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Quiz Admin Dashboard</h1>
+
+  <div id="login" class="card">
+    <input type="password" id="pw" placeholder="Admin Password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="dash" class="hide">
+    <div class="top">
+      <button onclick="load()">Refresh</button>
+      <button class="out" onclick="location.reload()">Logout</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sTotal">0</b>Total</div>
+      <div class="stat"><b id="sPass" style="color:#16a34a">0</b>Pass</div>
+      <div class="stat"><b id="sFail" style="color:#dc2626">0</b>Fail</div>
+    </div>
+    <p id="msg" style="text-align:center"></p>
+    <div class="cols">
+      <div class="col pass"><h2>Pass</h2><div id="passList"></div></div>
+      <div class="col fail"><h2>Fail</h2><div id="failList"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const URL_API = "https://script.google.com/macros/s/AKfycbzj-E4D0lobtwqwt6prqzDw6ucI4gkgZ170EsaBdPGjahyQ2EkJqtXpHanat2lNaPdz/exec";
+const PASSWORD = "admin212";
+const PASS_PERCENT = 50;
+
+function $(id){return document.getElementById(id)}
+
+function login(){
+  if($("pw").value === PASSWORD){
+    $("login").classList.add("hide");
+    $("dash").classList.remove("hide");
+    load();
+  } else alert("Wrong password");
+}
+
+function card(r){
+  const d = document.createElement("div");
+  d.className = "item";
+  const n = document.createElement("div");
+  n.className = "nm";
+  n.textContent = r["Name"];
+  const info = document.createElement("small");
+  info.textContent = r["Email/Roll No"] + " • " + r["Score"] + "/" + r["Total"] + " (" + r["Percentage"] + "%) • " + r["Time Taken"];
+  const dt = document.createElement("small");
+  dt.textContent = new Date(r["Timestamp"]).toLocaleString();
+  const det = document.createElement("details");
+  const sm = document.createElement("summary");
+  sm.textContent = "View answers";
+  const ol = document.createElement("ol");
+  for(let i=1;i<=20;i++){
+    const li = document.createElement("li");
+    li.textContent = r["Q"+i] || "Not Attempted";
+    ol.appendChild(li);
+  }
+  det.appendChild(sm);
+  det.appendChild(ol);
+  d.append(n, info, dt, det);
+  return d;
+}
+
+async function load(){
+  $("msg").textContent = "Loading...";
+  try{
+    const res = await fetch(URL_API);
+    const j = await res.json();
+    if(j.status !== "success") throw new Error(j.message);
+    const rows = j.data.reverse();
+    $("passList").innerHTML = "";
+    $("failList").innerHTML = "";
+    let p = 0, f = 0;
+    rows.forEach(r=>{
+      const pct = Number(r["Percentage"]);
+      if(pct >= PASS_PERCENT){ $("passList").appendChild(card(r)); p++; }
+      else { $("failList").appendChild(card(r)); f++; }
+    });
+    $("sTotal").textContent = rows.length;
+    $("sPass").textContent = p;
+    $("sFail").textContent = f;
+    $("msg").textContent = rows.length ? "" : "No attempts yet.";
+  }catch(e){
+    $("msg").textContent = "Error loading data: " + e.message;
+  }
+}
+</script>
+</body>
+        </html>
