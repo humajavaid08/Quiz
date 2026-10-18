@@ -1,1 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML & CSS Quiz</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#1e293b}
+.wrap{max-width:700px;margin:0 auto;padding:14px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+h1{font-size:22px;text-align:center;margin:10px 0}
+input[type=text]{width:100%;padding:12px;margin:6px 0;border:1px solid #cbd5e1;border-radius:8px;font-size:16px}
+button{width:100%;padding:13px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold}
+button:disabled{background:#94a3b8}
+#timer{position:sticky;top:0;z-index:5;background:#1e293b;color:#fff;text-align:center;padding:10px;font-size:20px;font-weight:bold}
+#timer.low{background:#dc2626}
+.q{font-weight:bold;margin-bottom:10px}
+label{display:block;padding:10px;margin:6px 0;border:1px solid #cbd5e1;border-radius:8px}
+label:has(input:checked){background:#dbeafe;border-color:#2563eb}
+.hide{display:none}
+.res{text-align:center}
+.big{font-size:40px;font-weight:bold}
+.pass{color:#16a34a}.fail{color:#dc2626}
+</style>
+</head>
+<body>
 
+<div id="start" class="wrap">
+  <h1>HTML & CSS Quiz</h1>
+  <div class="card">
+    <p>20 questions • 20 minutes • Pass: 50%</p>
+    <input type="text" id="name" placeholder="Your Name">
+    <input type="text" id="contact" placeholder="Email / Roll No">
+    <button onclick="startQuiz()">Start Quiz</button>
+  </div>
+</div>
+
+<div id="quiz" class="hide">
+  <div id="timer">20:00</div>
+  <div class="wrap">
+    <div id="qs"></div>
+    <button id="submitBtn" onclick="submitQuiz()">Submit Quiz</button>
+  </div>
+</div>
+
+<div id="result" class="wrap hide">
+  <div class="card res">
+    <h1>Quiz Completed</h1>
+    <div class="big" id="score"></div>
+    <p id="pct"></p>
+    <h2 id="status"></h2>
+    <p id="saveMsg"></p>
+  </div>
+</div>
+
+<script>
+const URL_API = "https://script.google.com/macros/s/AKfycbzsg9pE4V4TTROL-fLyf_rW2TtOLpK7myEIpI8zAO39Gj2i0EmBbGCTd8v1NDkbWn8/exec";
+const DURATION = 20 * 60;
+const PASS_PERCENT = 50;
+
+const Q = [
+["What does HTML stand for?",["Hyper Text Markup Language","High Text Machine Language","Hyper Transfer Modern Language","Home Tool Markup Language"],0],
+["Which tag is used to create a paragraph in HTML?",["<h1>","<p>","<br>","<img>"],1],
+["Which tag creates the largest heading in HTML?",["<h6>","<head>","<h1>","<heading>"],2],
+["Which tag is used to insert an image?",["<image>","<picture>","<src>","<img>"],3],
+["Which HTML tag creates a hyperlink?",["<a>","<linkto>","<href>","<url>"],0],
+["Which tag is used to create an unordered list?",["<ol>","<ul>","<li>","<list>"],1],
+["Which attribute specifies the destination of a hyperlink?",["src","name","href","alt"],2],
+["Which tag is used to create a line break?",["<p>","<hr>","<break>","<br>"],3],
+["Which section contains the visible content of an HTML webpage?",["<body>","<head>","<title>","<meta>"],0],
+["Which tag sets the title shown in the browser tab?",["<header>","<title>","<h1>","<body>"],1],
+["What does CSS stand for?",["Computer Style Sheets","Creative Styling System","Cascading Style Sheets","Colorful Style Software"],2],
+["Which CSS property changes text color?",["font-style","background-color","text-size","color"],3],
+["Which CSS property changes the background color?",["background-color","color","font-color","page-style"],0],
+["Which symbol is used to select an HTML element by its ID in CSS?",[".","#","*","@"],1],
+["Which symbol is used to select a class in CSS?",["#","&",".","$"],2],
+["Which CSS property changes the size of text?",["text-weight","font-family","text-style","font-size"],3],
+["Which CSS property makes text bold?",["font-weight","font-size","text-align","font-color"],0],
+["Which CSS property aligns text to the center?",["font-align","text-align","align-text","center-text"],1],
+["Which HTML tag is commonly used to connect an external CSS file?",["<stylefile>","<css>","<link>","<script>"],2],
+["Which CSS property rounds the corners of a button?",["border-style","corner-radius","button-shape","border-radius"],3]
+];
+const L = ["A","B","C","D"];
+let left = DURATION, tick, started = false, done = false, startTime;
+
+function $(id){return document.getElementById(id)}
+
+function startQuiz(){
+  const n = $("name").value.trim(), c = $("contact").value.trim();
+  if(!n || !c){alert("Please enter your name and email/roll no.");return;}
+  $("start").classList.add("hide");
+  $("quiz").classList.remove("hide");
+  const box = $("qs");
+  Q.forEach((q,i)=>{
+    const d = document.createElement("div");
+    d.className = "card";
+    const t = document.createElement("div");
+    t.className = "q";
+    t.textContent = (i+1) + ". " + q[0];
+    d.appendChild(t);
+    q[1].forEach((o,j)=>{
+      const lb = document.createElement("label");
+      const r = document.createElement("input");
+      r.type = "radio"; r.name = "q"+i; r.value = j;
+      lb.appendChild(r);
+      lb.appendChild(document.createTextNode(" " + L[j] + ") " + o));
+      d.appendChild(lb);
+    });
+    box.appendChild(d);
+  });
+  started = true;
+  startTime = Date.now();
+  draw();
+  tick = setInterval(()=>{
+    left--;
+    draw();
+    if(left <= 0) submitQuiz(true);
+  },1000);
+}
+
+function draw(){
+  const m = String(Math.floor(left/60)).padStart(2,"0");
+  const s = String(left%60).padStart(2,"0");
+  $("timer").textContent = "Time Left: " + m + ":" + s;
+  if(left <= 60) $("timer").classList.add("low");
+}
+
+function submitQuiz(auto){
+  if(done) return;
+  if(!auto){
+    const unans = Q.filter((_,i)=>!document.querySelector('input[name="q'+i+'"]:checked')).length;
+    if(unans && !confirm(unans + " question(s) unanswered. Submit anyway?")) return;
+  }
+  done = true;
+  clearInterval(tick);
+  $("submitBtn").disabled = true;
+
+  let score = 0;
+  const answers = Q.map((q,i)=>{
+    const sel = document.querySelector('input[name="q'+i+'"]:checked');
+    if(!sel) return "Not Attempted";
+    const v = parseInt(sel.value);
+    const ok = v === q[2];
+    if(ok) score++;
+    return L[v] + ") " + q[1][v] + (ok ? " ✔" : " ✘ (Correct: " + L[q[2]] + ")");
+  });
+
+  const total = Q.length;
+  const pct = Math.round(score/total*100);
+  const result = pct >= PASS_PERCENT ? "Pass" : "Fail";
+  const secs = Math.min(DURATION, Math.round((Date.now()-startTime)/1000));
+  const timeTaken = Math.floor(secs/60) + "m " + (secs%60) + "s";
+
+  $("quiz").classList.add("hide");
+  $("result").classList.remove("hide");
+  $("score").textContent = score + " / " + total;
+  $("pct").textContent = pct + "%";
+  $("status").textContent = result;
+  $("status").className = result === "Pass" ? "pass" : "fail";
+  $("saveMsg").textContent = "Saving your result...";
+  window.scrollTo(0,0);
+
+  const payload = {
+    name: $("name").value.trim(),
+    contact: $("contact").value.trim(),
+    score, total, percentage: pct, result, timeTaken, answers
+  };
+  fetch(URL_API,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(payload)
+  }).then(()=>{
+    $("saveMsg").textContent = "Your result has been submitted.";
+  }).catch(()=>{
+    $("saveMsg").textContent = "Could not save result. Check internet and tell your teacher.";
+  });
+}
+
+window.addEventListener("beforeunload",e=>{
+  if(started && !done){e.preventDefault();e.returnValue="";}
+});
+</script>
+</body>
+  </html>
